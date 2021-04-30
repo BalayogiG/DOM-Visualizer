@@ -14,6 +14,7 @@ Requirements:
   <li>pillow</li>
   <li>requests</li>
 <ul>
-  
-Graphviz software: <a href="https://graphviz.org/download/#windows">link</a>
+
+Graphviz software: 
+<a href="https://graphviz.org/download/#windows">link</a>
   
