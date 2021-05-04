@@ -10,9 +10,11 @@ import networkx as nx
 from networkx.drawing.nx_agraph import graphviz_layout
 from PIL import Image
 import streamlit.components.v1 as components
+from pyvis.network import Network
 import warnings
 warnings.filterwarnings('ignore')
 
+st.set_option('deprecation.showPyplotGlobalUse', False)
 # DOM visualizer with functions
 # 1. Cleaning html
 # 2. Get html source
@@ -58,17 +60,43 @@ class DOM_visualizer:
 
     def data_clean(self,df):
         df = df.dropna()
+        df.drop_duplicates(keep=False,inplace=True)
         return df
 
     def visualize(self, df):
         plt.figure(figsize=(20, 10))
         G = nx.from_pandas_edgelist(df, source='source', target='target', create_using=nx.DiGraph())
         node_limit = len(G.nodes)
+        cmap = plt.cm.spring
+        colors = range(node_limit)
+        vmin = min(colors)
+        vmax = max(colors)
+        pos = graphviz_layout(G, prog='dot')
+        nx.draw(G,pos, with_labels=True, node_size=5000,font_size=20, font_color='black', node_color=range(node_limit), cmap=cmap)
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin = vmin, vmax=vmax))
+        sm._A = []
+        plt.colorbar(sm)
+        plt.title('DOM Tree Visualization')
+        plt.savefig("DOM_Tree_viz.png", dpi=300)
+        plt.show()
+        st.pyplot()
+
+    def interactive_plot(self, df):
+        plt.figure(figsize=(20, 10))
+        G = nx.from_pandas_edgelist(df, source='source', target='target', create_using=nx.DiGraph())
+        node_limit = len(G.nodes)
         pos = graphviz_layout(G, prog='dot')
         nx.draw(G,pos, with_labels=True, node_size=5000,font_size=20, font_color='black', node_color=range(node_limit), cmap=plt.cm.spring)
         plt.title('DOM Tree Visualization')
-        plt.savefig("DOM_Tree_viz.png", dpi=300)
-        st.pyplot()
+        nt = Network("500px", "500px")
+        nt.from_nx(G)
+        nt.toggle_physics(True)
+        nt.save_graph('dom_tree_inter_viz.html')
+
+    def visualize_pyvis_graph(self):
+        HtmlFile = open("dom_tree_inter_viz.html", 'r', encoding='utf-8')
+        source_code = HtmlFile.read()
+        components.html(source_code, width=1000, height=500)
 
 dom = DOM_visualizer()
 
@@ -77,6 +105,7 @@ st.image(image, caption='Document Object Model Tree Visualization', width=150)
 st.title("DOM Tree Visualization")
 
 url = st.text_input("Enter Url:")
+inter_plot = st.checkbox("interactive plot")
 visualize = st.button("Visualize DOM")
 
 if visualize:
@@ -87,9 +116,18 @@ if visualize:
         clean_html_dataframe = dom.data_clean(html_dataframe)
         dom.visualize(clean_html_dataframe)
 
+if visualize:
+    if url != '':
+        if inter_plot:
+            html_source = dom.get_html_source(url)
+            clean_html = dom.clean_html_soup(html_source)
+            html_dataframe = dom.dataframe_creation(clean_html)
+            clean_html_dataframe = dom.data_clean(html_dataframe)
+            dom.interactive_plot(clean_html_dataframe)
+            dom.visualize_pyvis_graph()
+
 Topics = pd.DataFrame()
 Topics['topics'] = ['Select topic','What is DOM', 'Types of DOM','HTML DOM']
-
 
 option = st.sidebar.selectbox(
     'Select the Topic',
